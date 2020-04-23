@@ -8,7 +8,7 @@ from model.actor import DDPGActor as Actor
 from model.qnet import DDPGQNet as QNet
 from deeprl_util.buffer import ReplayBuffer
 from deeprl_util.normalizer import Normalizer
-from deeprl_util.args import Args
+from deeprl_util.args import DDPGArgs
 
 
 class DDPGAgent:
@@ -161,7 +161,7 @@ class DDPGAgent:
 
 def train_ddpg():
     import gym
-    args = Args()
+    args = DDPGArgs()
     prev = -1e9
     env = gym.make(args.env_name)
     ddpg_agent = DDPGAgent(env, args)

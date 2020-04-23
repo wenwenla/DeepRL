@@ -3,11 +3,11 @@ import numpy as np
 
 class ReplayBuffer:
 
-    def __init__(self, cap, state_dim, action_dim):
-        self._states = np.zeros((cap, state_dim))
+    def __init__(self, cap, state_shape, action_dim):
+        self._states = np.zeros((cap, *state_shape), dtype=np.float32)
         self._actions = np.zeros((cap, action_dim))
         self._rewards = np.zeros((cap, ))
-        self._states_next = np.zeros((cap, state_dim))
+        self._states_next = np.zeros((cap, *state_shape), dtype=np.float32)
         self._done = np.zeros((cap, ), dtype=np.bool)
         self._last_index = 0
         self._full = False

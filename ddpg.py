@@ -4,32 +4,26 @@ import torch
 import torch.optim as optim
 from torch.utils.tensorboard import SummaryWriter
 import numpy as np
-from model.actor import DDPGActor as Actor
-from model.qnet import DDPGQNet as QNet
 from deeprl_util.buffer import ReplayBuffer
-from deeprl_util.normalizer import Normalizer
-from deeprl_util.args import DDPGArgs
 
 
 class DDPGAgent:
 
-    def __init__(self, env, args):
-        self.state_dim, self.action_dim = env.observation_space.shape[0], env.action_space.shape[0]
+    def __init__(self, env, qnet_cls, pnet_cls, preprocessing_cls, args):
+        self.state_dim, self.action_dim = env.observation_space.shape, env.action_space.shape[0]
         self._args = args
-        self._actor = Actor(self.state_dim, self.action_dim)
-        self._critic = QNet(self.state_dim, self.action_dim)
-        self._target_actor = Actor(self.state_dim, self.action_dim)
+        self._actor = pnet_cls(self.state_dim, self.action_dim)
+        self._critic = qnet_cls(self.state_dim, self.action_dim)
+        self._target_actor = pnet_cls(self.state_dim, self.action_dim)
         self._target_actor.load_state_dict(self._actor.state_dict())
-        self._target_critic = QNet(self.state_dim, self.action_dim)
+        self._target_critic = qnet_cls(self.state_dim, self.action_dim)
         self._target_critic.load_state_dict(self._critic.state_dict())
         self._actor_optim = optim.Adam(self._actor.parameters(), lr=self._args.actor_lr)
         self._critic_optim = optim.Adam(self._critic.parameters(), lr=self._args.critic_lr)
-
         self._critic_loss_fn = torch.nn.MSELoss()
-
         self._exp = ReplayBuffer(args.exp_cap, self.state_dim, self.action_dim)
         self._env = env
-        self._norm = Normalizer(env)
+        self._pre = preprocessing_cls(env)
 
         self._update_cnt = 0
         self._train_ep = 0
@@ -98,37 +92,35 @@ class DDPGAgent:
             self._update_cnt += 1
 
             # log loss
-            self._sw.add_scalar('loss/actor', actor_loss.detach().item(), self._update_cnt)
-            self._sw.add_scalar('loss/critic', critic_loss.detach().item(), self._update_cnt)
+            if self._update_cnt % 100 == 0:
+                self._sw.add_scalar('loss/actor', actor_loss.detach().item(), self._update_cnt)
+                self._sw.add_scalar('loss/critic', critic_loss.detach().item(), self._update_cnt)
 
     def train_one_episode(self):
         state = self._env.reset()
         done = False
         total_reward = 0
         while not done:
-            action = self.choose_action_with_exploration(self._norm.transform(state))
+            action = self.choose_action_with_exploration(self._pre.transform(state))
             state_, reward, done, _ = self._env.step(action * self._args.action_bound)
             self._exp.add(
-                self._norm.transform(state),
+                self._pre.transform(state),
                 action,
                 reward,
-                self._norm.transform(state_),
+                self._pre.transform(state_),
                 done
             )
             self.update()
             state = state_
             total_reward += reward
         self._train_ep += 1
-        # log train_reward
-        # self._norm.debug()
-
         self._sw.add_scalar('step_reward/train', total_reward, self._update_cnt)
         self._sw.add_scalar('ep_reward/train', total_reward, self._train_ep)
         return total_reward
 
-    def test_one_episode(self, render=False):
+    def test_one_episode(self, viewer=False):
         state = self._env.reset()
-        if render:
+        if viewer:
             self._env.render()
             time.sleep(0.1)
         done = False
@@ -136,7 +128,7 @@ class DDPGAgent:
         while not done:
             action = self.choose_action(self._norm.transform(state))
             state_, reward, done, _ = self._env.step(action * self._args.action_bound)
-            if render:
+            if viewer:
                 self._env.render()
                 time.sleep(0.1)
             state = state_
@@ -150,29 +142,13 @@ class DDPGAgent:
         self._sw.add_scalar('ep_reward/test', r_mean, self._train_ep)
         return r_mean
 
-    def load(self, name):
-        s = torch.load(name)
-        self._actor.load_state_dict(s)
-
     def save(self, path):
+        self._pre.save(path)
         path = os.path.join(path, 'best.pkl')
         torch.save(self._actor.state_dict(), path)
 
-
-def train_ddpg():
-    import gym
-    args = DDPGArgs()
-    prev = -1e9
-    env = gym.make(args.env_name)
-    ddpg_agent = DDPGAgent(env, args)
-    for ep in range(args.max_ep):
-        ddpg_agent.train_one_episode()
-        if ep % args.test_interval == 0:
-            r = ddpg_agent.test_model()
-            if r > prev:
-                prev = r
-                ddpg_agent.save(args.save_path)
-
-
-if __name__ == '__main__':
-    train_ddpg()
+    def load(self, path):
+        self._pre.load(path)
+        path = os.path.join(path, 'best.pkl')
+        state_dict = torch.load(path)
+        self._actor.load_state_dict(state_dict)

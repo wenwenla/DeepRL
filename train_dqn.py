@@ -72,6 +72,6 @@ def test_ddqn():
 if __name__ == '__main__':
     # train_dqn()
     # test_dqn()
-    # train_ddqn()
+    train_ddqn()
     # train_dqn()
-    test_ddqn()
+    # test_ddqn()

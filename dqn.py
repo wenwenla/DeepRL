@@ -63,6 +63,7 @@ class DQNAgent:
 
     def train_one_episode(self):
         state = self.env.reset()
+        self.pre.reset()
         state = self.pre.transform(state)
         done = False
         total = 0
@@ -84,6 +85,7 @@ class DQNAgent:
 
     def test_one_episode(self, viewer=False):
         state = self.env.reset()
+        self.pre.reset()
         state = self.pre.transform(state)
         done = False
         total = 0

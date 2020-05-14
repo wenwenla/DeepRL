@@ -1,37 +1,70 @@
 import os
 import pickle
 import numpy as np
+import PIL.Image as Image
 from sklearn.preprocessing import Normalizer
 
 
-class DQNTransformer:
+class Transormer:
 
-    EMPTY = np.zeros((210, 160), dtype=np.float32)
+    def __init__(self, env):
+        pass
 
-    def __init__(self):
+    def reset(self):
+        pass
+
+    def transform(self, state):
+        pass
+
+    def save(self, path):
+        pass
+
+    def load(self, path):
+        pass
+
+
+class DQNTransformer(Transormer):
+
+    WIDTH = 64
+    HEIGHT = 64
+    EMPTY = np.zeros((WIDTH, HEIGHT), dtype=np.float32)
+
+    def __init__(self, env):
+        super().__init__(env)
         self._buffer = [
-            DQNTransformer.EMPTY, 
+            DQNTransformer.EMPTY,
             DQNTransformer.EMPTY,
             DQNTransformer.EMPTY,
             DQNTransformer.EMPTY
         ]
-        self.shape = (4, 210, 160)
 
-    def clear(self):
+    def reset(self):
         self._buffer = self._buffer[:4]
 
-    def add(self, state):
-        state = np.dot(state[..., :3], [0.299, 0.587, 0.114])
-        state /= 255.
-        self._buffer.append(state)
-
-    def get(self):
+    def transform(self, state):
+        img = Image.fromarray(state)
+        img.save('./origin.jpg')
+        img = img.convert('L')
+        img = img.crop((0, 34, 160, 194))
+        img.save('./crop.jpg')
+        img = img.resize((DQNTransformer.HEIGHT, DQNTransformer.WIDTH))
+        img.save('./resize.jpg')
+        # state = np.dot(state[..., :3], [0.299, 0.587, 0.114])
+        # img = Image.fromarray(state)
+        # img.save('./img.jpg')
+        # res = img.resize((DQNTransformer.HEIGHT, DQNTransformer.WIDTH), Image.ANTIALIAS)
+        # # res.save('./img.jpg')
+        # res = np.asarray(res).copy()
+        
+        # res /= 255.
+        # self._buffer.append(res)
         return np.array([self._buffer[i] for i in [-4, -3, -2, -1]], dtype=np.float32)
 
 
-class SimpleNormalizer:
+class SimpleNormalizer(Transormer):
 
     def __init__(self, env):
+        super().__init__()
         self._env = env
         self._norm = Normalizer()
         self._norm.fit(self._gen_data(10000))

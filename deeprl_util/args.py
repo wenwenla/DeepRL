@@ -24,7 +24,7 @@ class DQNArgs:
     def __init__(self):
         self.exp_cap = 1000000
         self.gamma = 0.99
-        self.batch = 128
+        self.batch = 32
         self.tau = 64
         self.max_ep = 2000
         self.log_interval = 1000
@@ -41,13 +41,15 @@ class DDQNArgs:
     def __init__(self):
         self.exp_cap = 1000000
         self.gamma = 0.99
-        self.batch = 128
-        self.tau = 64
-        self.max_ep = 200000
+        self.batch = 32
+        self.tau = 32
+        self.max_ep = 4000
         self.log_interval = 1000
         self.test_interval = 32
         self.lr = 5e-4
-        self.epsilon = 0.1
-        self.env_name = 'BipedalWalkerHardcore-v3'
-        self.log_dir = './logs/ddqn/{}'.format(self.env_name)
-        self.save_dir = './result/ddqn/{}'.format(self.env_name)
+        self.max_epsilon = 0.1
+        self.min_epsilon = 0.1
+        self.epsilon_decay = 0.5 / 500
+        self.env_name = 'LunarLander-v2'
+        self.log_dir = './logs/ddqn/{}-soft'.format(self.env_name)
+        self.save_dir = './result/ddqn/{}-soft'.format(self.env_name)

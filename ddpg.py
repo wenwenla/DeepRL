@@ -126,7 +126,7 @@ class DDPGAgent:
         done = False
         total_reward = 0
         while not done:
-            action = self.choose_action(self._norm.transform(state))
+            action = self.choose_action(self._pre.transform(state))
             state_, reward, done, _ = self._env.step(action * self._args.action_bound)
             if viewer:
                 self._env.render()

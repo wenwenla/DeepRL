@@ -13,12 +13,12 @@ class QNet(nn.Module):
     def __init__(self, state_shape, action_cnt):
         super().__init__()
         self.fc0 = nn.Linear(state_shape[0], 128)
-        self.fc1 = nn.Linear(128, 128)
-        self.fc2 = nn.Linear(128, action_cnt)
+        self.fc1 = nn.Linear(128, 64)
+        self.fc2 = nn.Linear(64, action_cnt)
 
     def forward(self, x):
-        x = torch.relu(self.fc0(x))
-        x = torch.relu(self.fc1(x))
+        x = torch.tanh(self.fc0(x))
+        x = torch.tanh(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -65,13 +65,13 @@ def test_ddqn():
     env = gym.make(args.env_name)
     agent = DDQNAgent(env, QNet, SimpleNormalizer, args)
     agent.load(args.save_dir)
-    mean_reward = [agent.test_one_episode(False) for _ in range(100)]
+    mean_reward = [agent.test_one_episode(True) for _ in range(100)]
     print(np.mean(mean_reward))
 
 
 if __name__ == '__main__':
     # train_dqn()
     # test_dqn()
-    train_ddqn()
+    # train_ddqn()
     # train_dqn()
-    # test_ddqn()
+    test_ddqn()

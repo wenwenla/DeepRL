@@ -24,6 +24,7 @@ class DQNAgent:
         self.sw = SummaryWriter(self.args.log_dir)
         self.steps = 0
         self.episode = 0
+        self._now_epsilon = args.max_epsilon
         if not os.path.exists(self.args.save_dir):
             os.mkdir(self.args.save_dir)
 
@@ -34,7 +35,7 @@ class DQNAgent:
         return np.argmax(action)
 
     def choose_action_with_exploration(self, state):
-        if np.random.uniform() < self.args.epsilon:
+        if np.random.uniform() < self._now_epsilon:
             return self.env.action_space.sample()
         return self.choose_action(state)
 
@@ -56,11 +57,6 @@ class DQNAgent:
         if self.steps % self.args.log_interval == 0:
             self.sw.add_scalar('loss/qloss', loss.item(), self.steps)
 
-    def soft_copy_parm(self):
-        with torch.no_grad():
-            for t, s in zip(self.target_qnet.parameters(), self.qnet.parameters()):
-                t.copy_(0.95 * t.data + 0.05 * s.data)
-
     def hard_copy_parm(self):
         if self.steps % self.args.tau == 0:
             self.target_qnet.load_state_dict(self.qnet.state_dict())
@@ -80,7 +76,10 @@ class DQNAgent:
             state = state_
             self.steps += 1
         self.episode += 1
+        self._now_epsilon -= self.args.epsilon_decay
+        self._now_epsilon = max(self._now_epsilon, self.args.min_epsilon)
         self.sw.add_scalar('reward/train', total, self.episode)
+        self._log_avg_q()
         return total
 
     def test_one_episode(self, viewer=False):
@@ -116,3 +115,11 @@ class DQNAgent:
         path = os.path.join(path, 'best.pkl')
         state_dict = torch.load(path)
         self.qnet.load_state_dict(state_dict)
+
+    def _log_avg_q(self):
+        s, *_ = self.replay.sample(64)
+        s_feed = torch.FloatTensor(s)
+        with torch.no_grad():
+            q = self.qnet(s_feed)
+            val = q.mean().item()
+        self.sw.add_scalar('avg_q', val, self.episode)

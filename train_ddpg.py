@@ -12,7 +12,7 @@ def train_ddpg():
     agent = DDPGAgent(env, DDPGQNet, DDPGActor, SimpleNormalizer, args)
     for ep in range(args.max_ep):
         agent.train_one_episode()
-        if ep % args.test_interval:
+        if ep % args.test_interval == 0:
             agent.test_model()
 
 
